@@ -59,7 +59,8 @@ podSecurityContext: {}
 securityContext: {}
 
 resources: {}
-nodeSelector: {}
+nodeSelector: 
+  nvidia.com/gpu: "true"
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:

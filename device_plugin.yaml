@@ -1,0 +1,53 @@
+# nvidia-device-plugin-fixed.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: nvidia-device-plugin-ds
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: nvidia-device-plugin-ds
+    spec:
+      nodeSelector:
+        nvidia.com/gpu: "true"  # Must match GPU node labels
+      hostPID: true  # Required for device access
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      priorityClassName: "system-node-critical"
+      containers:
+      - image: nvcr.io/nvidia/k8s-device-plugin:v0.17.1
+        name: nvidia-device-plugin-ctr
+        args: ["--device-discovery-strategy=nvml"]
+        env:
+          - name: LD_LIBRARY_PATH
+            value: "/host/usr/lib64:/host/usr/lib/x86_64-linux-gnu"
+        securityContext:
+          privileged: true  # Mandatory for K3s
+        volumeMounts:
+          - name: device-plugin
+            mountPath: /var/lib/kubelet/device-plugins
+          - name: nvidia-driver
+            mountPath: /host/usr/lib64
+            readOnly: true
+          - name: nvidia-binaries
+            mountPath: /host/usr/bin
+            readOnly: true
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: nvidia-driver
+          hostPath:
+            path: /usr/lib64
+        - name: nvidia-binaries
+          hostPath:
+            path: /usr/bin
