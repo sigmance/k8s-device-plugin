@@ -21,7 +21,7 @@
 #   -v /mnt/77341839-d920-42f9-9d22-36577f476c1b/cluster-data:/root/cluster-data \
 #   rancher/rancher:v2.11-head
 
-echo "=== Creating containerd config to enable nvidia-container-runtime ==="
+echo "=== Creating FIXED containerd config to enable nvidia-container-runtime ==="
 # docker exec rancher mkdir -p /var/lib/rancher/k3s/agent/etc/containerd/
 docker exec -i rancher bash -c 'cat > /var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl' <<'EOF'
 [plugins.opt]
@@ -39,31 +39,43 @@ docker exec -i rancher bash -c 'cat > /var/lib/rancher/k3s/agent/etc/containerd/
 [plugins.cri.containerd]
   snapshotter = "overlayfs"
   disable_snapshot_annotations = true
-  default_runtime_name = "nvidia"
+  default_runtime_name = "runc"
   
 [plugins.cri.cni]
   bin_dir = "/usr/bin"
   conf_dir = "/var/lib/rancher/k3s/agent/etc/cni/net.d"
 
 [plugins.cri.containerd.runtimes.runc]
- runtime_type = "io.containerd.runc.v2"
-
-[plugins.linux]
-  runtime = "nvidia-container-runtime"
+  runtime_type = "io.containerd.runc.v2"
 
 [plugins.cri.containerd.runtimes.runc.options]
   SystemdCgroup = false
 
-[plugins.cri.registry]
-  config_path = "/var/lib/rancher/k3s/agent/etc/containerd/certs.d"
-
-[plugins.cri.containerd.runtimes."nvidia"]
+[plugins.cri.containerd.runtimes.nvidia]
   runtime_type = "io.containerd.runc.v2"
-[plugins.cri.containerd.runtimes."nvidia".options]
+
+[plugins.cri.containerd.runtimes.nvidia.options]
   BinaryName = "/usr/bin/nvidia-container-runtime"
   SystemdCgroup = false
+
+[plugins.cri.registry]
+  config_path = "/var/lib/rancher/k3s/agent/etc/containerd/certs.d"
 EOF
 
 
-echo "=== Applying the NVIDIA GPU device plugin DaemonSet via container's kubectl ==="
-docker exec rancher kubectl create -f ../device_plugin.yaml
+# Key changes from the original broken configuration:
+# 1. Changed default_runtime_name from "nvidia" to "runc" 
+# 2. Fixed nvidia runtime configuration formatting
+# 3. Removed problematic [plugins.linux] section
+echo ""
+echo "=== IMPORTANT: Apply NVIDIA Device Plugin using fixed Helm chart ==="
+echo "The device plugin needs privileged access and proper volume mounts."
+echo "Use the updated helm chart in: ../deployments/helm/nvidia-device-plugin/"
+echo ""
+echo "Example deployment command:"
+echo "helm install nvidia-device-plugin ./nvidia-device-plugin \\"
+echo "  --namespace nvidia \\"
+echo "  --create-namespace \\"
+echo "  --set driver.enabled=false \\"
+echo "  --set deviceDiscoveryStrategy=nvml \\"
+echo "  --set nvidiaDriverRoot=/usr"
