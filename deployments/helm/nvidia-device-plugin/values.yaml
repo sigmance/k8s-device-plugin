@@ -32,10 +32,10 @@ migStrategy: null
 failOnInitError: null
 deviceListStrategy: null
 deviceIDStrategy: null
-nvidiaDriverRoot: null
+nvidiaDriverRoot: "/driver-root"
 gdsEnabled: null
 mofedEnabled: null
-deviceDiscoveryStrategy: null
+deviceDiscoveryStrategy: "nvml"
 
 nameOverride: ""
 fullnameOverride: ""
@@ -56,7 +56,12 @@ updateStrategy:
 
 podAnnotations: {}
 podSecurityContext: {}
-securityContext: {}
+securityContext:
+  privileged: true
+  allowPrivilegeEscalation: true
+  capabilities:
+    add:
+    - ALL
 
 resources: {}
 nodeSelector: 

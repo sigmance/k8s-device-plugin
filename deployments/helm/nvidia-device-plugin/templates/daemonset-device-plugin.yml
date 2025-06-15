@@ -212,6 +212,8 @@ spec:
             mountPath: /mps
           - name: cdi-root
             mountPath: /var/run/cdi
+          - name: dev
+            mountPath: /dev
         {{- if $options.hasConfigMap }}
           - name: available-configs
             mountPath: /available-configs
@@ -242,6 +244,9 @@ spec:
           hostPath:
             path: /var/run/cdi
             type: DirectoryOrCreate
+        - name: dev
+          hostPath:
+            path: /dev
       {{- if $options.hasConfigMap }}
         - name: available-configs
           configMap:
