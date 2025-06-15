@@ -1,0 +1,66 @@
+replicaCount: 1
+
+image:
+  repository: pytorch/pytorch
+  tag: "2.1.2-cuda12.1-cudnn8-runtime"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+resources:
+  limits:
+    nvidia.com/gpu: 1
+  requests:
+    memory: "2Gi"
+    cpu: "1"
+
+runtimeClassName: nvidia
+
+nodeSelector:
+  nvidia.com/gpu: "true"
+
+tolerations:
+- key: nvidia.com/gpu
+  operator: Exists
+  effect: NoSchedule
+
+affinity: {}
+
+# Test configuration
+test:
+  enabled: true
+  testType: "pytorch"  # Options: pytorch, tensorflow, custom
+  
+  # Custom test script
+  script: |
+    import torch
+    import time
+    print("=== GPU Training Test ===")
+    print(f"PyTorch version: {torch.__version__}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"CUDA device count: {torch.cuda.device_count()}")
+        for i in range(torch.cuda.device_count()):
+            print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+        
+        # Simple GPU computation test
+        device = torch.device('cuda:0')
+        print(f"Using device: {device}")
+        
+        # Create test tensors
+        x = torch.randn(1000, 1000, device=device)
+        y = torch.randn(1000, 1000, device=device)
+        
+        # Time matrix multiplication
+        start_time = time.time()
+        for _ in range(100):
+            z = torch.matmul(x, y)
+        end_time = time.time()
+        
+        print(f"100 matrix multiplications took: {end_time - start_time:.4f} seconds")
+        print(f"GPU memory allocated: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MB")
+        print("=== GPU Test PASSED ===")
+    else:
+        print("=== GPU Test FAILED: CUDA not available ===")
+        exit(1)

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "test-gpu-training.fullname" . }}
+  labels:
+    {{- include "test-gpu-training.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "test-gpu-training.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "/test/test_script.py"]
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.test.enabled }}
+        volumeMounts:
+        - name: test-script
+          mountPath: /test
+        {{- end }}
+      {{- if .Values.test.enabled }}
+      volumes:
+      - name: test-script
+        configMap:
+          name: {{ include "test-gpu-training.fullname" . }}-test-script
+      {{- end }}

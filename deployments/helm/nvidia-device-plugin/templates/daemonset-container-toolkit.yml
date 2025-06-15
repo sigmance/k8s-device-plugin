@@ -1,0 +1,111 @@
+{{- if .Values.containerToolkit.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "nvidia-device-plugin.fullname" . }}-container-toolkit
+  namespace: {{ include "nvidia-device-plugin.namespace" . }}
+  labels:
+    {{- include "nvidia-device-plugin.labels" . | nindent 4 }}
+    app.kubernetes.io/component: "container-toolkit"
+spec:
+  selector:
+    matchLabels:
+      {{- include "nvidia-device-plugin.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: "container-toolkit"
+  template:
+    metadata:
+      labels:
+        {{- include "nvidia-device-plugin.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: "container-toolkit"
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- with .Values.runtimeClassName }}
+      runtimeClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.containerToolkit.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.containerToolkit.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.containerToolkit.tolerations }}
+      tolerations:
+        {{- toYaml .Values.containerToolkit.tolerations | nindent 8 }}
+      {{- end }}
+      hostPID: true
+      containers:
+      - name: nvidia-container-toolkit
+        image: "{{ .Values.containerToolkit.image.repository }}:{{ .Values.containerToolkit.image.tag }}"
+        imagePullPolicy: {{ .Values.containerToolkit.image.pullPolicy }}
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - >
+          echo "Starting NVIDIA Container Toolkit setup...";
+          while [ ! -e /dev/nvidiactl ]; do
+            echo "Waiting for NVIDIA driver...";
+            sleep 5;
+          done;
+          echo "NVIDIA driver detected, configuring toolkit...";
+          CONTAINERD_CONFIG="/etc/containerd/config.toml";
+          if [ -f "$CONTAINERD_CONFIG" ]; then
+            echo "Found containerd config, backing up...";
+            cp "$CONTAINERD_CONFIG" "$CONTAINERD_CONFIG.bak";
+            if ! grep -q "nvidia" "$CONTAINERD_CONFIG"; then
+              echo "Adding NVIDIA runtime to containerd config...";
+              echo "" >> "$CONTAINERD_CONFIG";
+              echo "[plugins.\"io.containerd.grpc.v1.cri\".containerd.runtimes.nvidia]" >> "$CONTAINERD_CONFIG";
+              echo "  runtime_type = \"io.containerd.runc.v2\"" >> "$CONTAINERD_CONFIG";
+              echo "  [plugins.\"io.containerd.grpc.v1.cri\".containerd.runtimes.nvidia.options]" >> "$CONTAINERD_CONFIG";
+              echo "    BinaryName = \"/usr/bin/nvidia-container-runtime\"" >> "$CONTAINERD_CONFIG";
+              echo "NVIDIA runtime configuration added";
+            else
+              echo "NVIDIA runtime already configured";
+            fi;
+            kill -HUP 1 2>/dev/null || true;
+          else
+            echo "Warning: containerd config not found at $CONTAINERD_CONFIG";
+          fi;
+          echo "NVIDIA Container Toolkit setup completed successfully";
+          while true; do
+            echo "NVIDIA Container Toolkit running... $(date)";
+            sleep 300;
+          done
+        securityContext:
+          privileged: true
+        env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "void"
+        resources:
+          {{- toYaml .Values.containerToolkit.resources | nindent 10 }}
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+        - name: containerd-config
+          mountPath: /etc/containerd
+        - name: containerd-socket
+          mountPath: /run/containerd
+        - name: dev
+          mountPath: /dev
+      volumes:
+      - name: host-root
+        hostPath:
+          path: /
+      - name: containerd-config
+        hostPath:
+          path: /var/lib/rancher/k3s/agent/etc/containerd
+      - name: containerd-socket
+        hostPath:
+          path: /run/k3s/containerd
+      - name: dev
+        hostPath:
+          path: /dev
+{{- end }}

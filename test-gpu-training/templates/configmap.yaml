@@ -1,0 +1,11 @@
+{{- if .Values.test.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "test-gpu-training.fullname" . }}-test-script
+  labels:
+    {{- include "test-gpu-training.labels" . | nindent 4 }}
+data:
+  test_script.py: |
+{{ .Values.test.script | indent 4 }}
+{{- end }}
