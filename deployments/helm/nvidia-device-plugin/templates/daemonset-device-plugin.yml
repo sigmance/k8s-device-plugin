@@ -189,6 +189,9 @@ spec:
           - name: DEVICE_DISCOVERY_STRATEGY
             value: {{ .Values.deviceDiscoveryStrategy }}
         {{- end }}
+        {{- with .Values.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
           - name: NVIDIA_VISIBLE_DEVICES
             value: all
           - name: NVIDIA_DRIVER_CAPABILITIES
@@ -204,6 +207,10 @@ spec:
           - name: driver-root
             mountPath: /driver-root
             readOnly: true
+        {{- end }}
+        {{- if typeIs "string" .Values.nvidiaDevRoot }}
+          - name: dev-root
+            mountPath: {{ .Values.nvidiaDevRoot }}
         {{- end }}
           # The MPS /dev/shm is needed to allow for MPS daemon health-checking.
           - name: mps-shm
@@ -233,10 +240,15 @@ spec:
         - name: mps-shm
           hostPath:
             path: {{ .Values.mps.root }}/shm
-       {{- if typeIs "string" .Values.nvidiaDriverRoot }}
+        {{- if typeIs "string" .Values.nvidiaDriverRoot }}
         - name: driver-root
           hostPath:
             path: {{ .Values.nvidiaDriverRoot }}
+        {{- end }}
+        {{- if typeIs "string" .Values.nvidiaDevRoot }}
+        - name: dev-root
+          hostPath:
+            path: {{ .Values.nvidiaDevRoot }}
         {{- end }}
         - name: cdi-root
           hostPath:

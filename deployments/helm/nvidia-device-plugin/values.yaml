@@ -59,6 +59,7 @@ podSecurityContext: {}
 securityContext: {}
 
 resources: {}
+extraEnv: []
 nodeSelector: 
   nvidia.com/gpu: "true"
 affinity:

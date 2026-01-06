@@ -1,0 +1,19 @@
+nfd:
+  enabled: true
+  enableNodeFeatureApi: false
+  featureGates:
+    NodeFeatureAPI: false
+
+deviceDiscoveryStrategy: nvml
+nvidiaDriverRoot: /usr
+nvidiaDevRoot: /dev
+failOnInitError: false
+
+securityContext:
+  privileged: true
+
+extraEnv:
+  - name: LD_LIBRARY_PATH
+    value: /driver-root/lib64:/driver-root/lib:/driver-root/lib/x86_64-linux-gnu
+
+nodeSelector: null
